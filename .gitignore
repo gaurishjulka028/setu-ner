@@ -1,0 +1,24 @@
+# deps
+node_modules/
+*/node_modules/
+
+# env files (real secrets — .env.example stays committed)
+.env
+*/.env
+!*.env.example
+
+# build output
+dist/
+*/dist/
+*/build/
+
+# db + uploads (runtime data, not source)
+server/prisma/dev.db
+server/prisma/dev.db-journal
+server/uploads/
+
+# misc
+*.tsbuildinfo
+.DS_Store
+*.log
+npm-debug.log*

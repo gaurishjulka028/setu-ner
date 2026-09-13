@@ -1,0 +1,52 @@
+{
+  "name": "setu-ner-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "scripts/start.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node scripts/start.js",
+    "prisma:generate": "node scripts/postinstall.js",
+    "prisma:migrate": "tsx scripts/migrate.ts",
+    "seed": "tsx prisma/seed.ts",
+    "postinstall": "node scripts/postinstall.js",
+    "migrate": "tsx scripts/migrate.ts",
+    "setup": "npm run migrate && npm run seed"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "@prisma/adapter-libsql": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.8.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jose": "^6.2.12",
+    "jpeg-js": "^0.4.4",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0",
+    "pngjs": "^6.0.0",
+    "socket.io": "^4.8.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jpeg-js": "^0.3.7",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^20.16.10",
+    "@types/pngjs": "^6.0.5",
+    "prisma": "^7.10.0",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

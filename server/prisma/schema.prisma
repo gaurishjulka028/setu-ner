@@ -1,0 +1,252 @@
+// SETU-NER backend schema — mirrors setu-ner/src/types.ts exactly.
+// SQLite for fast, dependency-free setup; written so a swap to Postgres
+// later only means changing `provider` + `url` and re-running migrate.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ── User / auth ─────────────────────────────────────────────────────────
+// Role = 'citizen' | 'operator' | 'logistics' | 'official' | 'admin'
+model User {
+  id           String  @id
+  email        String  @unique // login identifier; not part of the frontend User type
+  name         String
+  role         String
+  org          String
+  districtId   String
+  points       Int?
+  badges       String? // string[], JSON-encoded (SQLite has no native Json type)
+  passwordHash String? // server-only; null for Google/Firebase-only accounts
+  phone        String? // E.164 digits (e.g. 9198652296833); compulsory at sign-up
+  authProvider String  @default("password") // "password" | "google"
+  googleSub    String? @unique // Google/Firebase subject id for SSO accounts
+  phoneVerifiedAt Float? // epoch ms when the phone passed OTP; null = not yet verified
+
+  @@map("users")
+}
+
+// ── Reference / network data ───────────────────────────────────────────
+model District {
+  id         String @id
+  name       String
+  state      String
+  lat        Float
+  lng        Float
+  hq         String
+  population Int
+
+  @@map("districts")
+}
+
+// RoadType = 'NH' | 'SH' | 'rural' | 'bridge'
+// Terrain = 'flat' | 'hilly' | 'mountain'
+// SegStatus = 'open' | 'caution' | 'blocked'
+model Segment {
+  id               String  @id
+  name             String
+  road             String
+  roadType         String
+  from             String
+  to               String
+  districtId       String
+  coords           String // [number, number][], JSON-encoded (SQLite has no native Json type)
+  lengthKm         Float
+  terrain          String
+  slope            Float
+  elevation        Float
+  bridge           Boolean?
+  singleLane       Boolean?
+  failureHistory   Int
+  baseCondition    String // 'good' | 'fair' | 'poor'
+  sensorVibration  Float
+  sensorWaterLevel Float
+  sensorSurface    Float
+  reportedStatus   String? // SegStatus
+  reportReason     String?
+
+  @@map("segments")
+}
+
+// CargoType = 'medicine' | 'food' | 'fuel' | 'construction' | 'agri' | 'relief'
+// VehicleStatus = 'moving' | 'delayed' | 'halted' | 'delivered'
+model Vehicle {
+  id             String  @id
+  driver         String
+  org            String
+  cargo          String
+  cargoDetail    String
+  weightT        Float
+  from           String
+  to             String
+  path           String // segment ids, string[], JSON-encoded (SQLite has no native Json type)
+  progressKm     Float
+  speedKmph      Float
+  status         String
+  delayHours     Float
+  lat            Float
+  lng            Float
+  trail          String // [number, number][], JSON-encoded (SQLite has no native Json type)
+  routeStatus    String? // 'active' | 'disrupted' | 'replaced'
+  replacedRoute  String? // string[], JSON-encoded (SQLite has no native Json type)
+  lastMile       Boolean?
+  community      String?
+  contact        String?
+
+  shipments Shipment[]
+
+  @@map("vehicles")
+}
+
+model Shipment {
+  id           String  @id
+  vehicleId    String
+  vehicle      Vehicle @relation(fields: [vehicleId], references: [id])
+  cargo        String
+  cargoDetail  String
+  shipper      String
+  from         String
+  to           String
+  weightT      Float
+  dispatchedAt String // ISO date string
+
+  @@map("shipments")
+}
+
+// Facility['type'] = 'warehouse' | 'hospital' | 'relief_camp' | 'depot' | 'fuel'
+model Facility {
+  id         String  @id
+  name       String
+  type       String
+  lat        Float
+  lng        Float
+  districtId String
+  note       String?
+
+  @@map("facilities")
+}
+
+// IncidentType = 'landslide' | 'flood' | 'roadblock' | 'damage' | 'accident' | 'accessibility' | 'weather' | 'other'
+// Severity = 'minor' | 'partial' | 'impassable'
+model IncidentReport {
+  id             String  @id
+  type           String
+  severity       String
+  description    String
+  lat            Float
+  lng            Float
+  location       String?
+  segmentId      String?
+  districtId     String?
+  reporter       String
+  reporterRole   String // Role
+  photoName      String?
+  // Server-side path to the uploaded photo file, served statically at
+  // /uploads/photos/<file> (see src/lib/uploads.ts + src/index.ts).
+  // Production upgrade: object storage (S3-compatible) + signed URLs.
+  photoUrl       String?
+  photoSeverity  String?
+  photoConfidence Float?
+  status         String // 'pending' | 'verified' | 'rejected'
+  confidence     Float
+  points         Int
+  createdAt      Float // epoch ms, matches frontend Date.now()
+  synced         Boolean
+
+  @@map("incident_reports")
+}
+
+// AlertType = 'landslide' | 'flood' | 'roadblock' | 'weather' | 'delay' | 'supply' | 'reroute' | 'convoy' | 'report'
+model AlertItem {
+  id        String  @id
+  type      String
+  severity  String // 'high' | 'medium' | 'low'
+  title     String
+  location  String
+  message   String
+  action    String
+  time      Float // epoch ms
+  lat       Float?
+  lng       Float?
+  segmentId String?
+  read      Boolean?
+  resolved  Boolean?
+
+  @@map("alert_items")
+}
+
+model WeatherPoint {
+  id        String @id
+  name      String
+  lat       Float
+  lng       Float
+  rainNow   Float
+  tempC     Float
+  forecast  String // { hour: number; rain: number }[], JSON-encoded (SQLite has no native Json type)
+  fetchedAt Float // epoch ms
+
+  @@map("weather_points")
+}
+
+model StockLevels {
+  districtId   String @id
+  medicine     Float
+  food         Float
+  fuel         Float
+  construction Float
+
+  @@map("stock_levels")
+}
+
+// Booking['status'] = 'requested' | 'assigned' | 'in_transit' | 'delivered'
+model Booking {
+  id               String  @id
+  shipper          String
+  fromDistrict     String
+  toDistrict       String
+  cargo            String
+  weightT          Float
+  vehicleId        String?
+  status           String
+  lastMile         Boolean
+  communityCarrier String?
+  warehouseOut     Boolean?
+  depotReached     Boolean?
+  villageReceived  Boolean?
+  createdAt        Float // epoch ms
+
+  @@map("bookings")
+}
+
+// ── Shared operational state (Disaster Mode etc.) ───────────────────────
+// Key/value so future region-wide toggles don't each need a migration.
+model SystemState {
+  key       String @id
+  value     String // JSON-encoded
+  updatedBy String?
+  updatedAt Float // epoch ms
+
+  @@map("system_state")
+}
+
+// ── Phone OTP verification codes (lib/otp.ts) ───────────────────────────
+// Previously kept in an in-memory Map, which meant every `tsx watch`
+// restart in dev — or any multi-instance deployment — silently dropped
+// codes that were mid-flight (someone waiting on a text message would get
+// "code expired" for no visible reason). One row per phone number, so
+// requesting a new code just overwrites the old row.
+model OtpCode {
+  phone     String @id // E.164 digits, e.g. 919812345671
+  hash      String // HMAC-SHA256 of the code — the plaintext code is never stored
+  expiresAt Float // epoch ms
+  attempts  Int    @default(0)
+  sentAt    Float // epoch ms; also the resend-cooldown anchor
+  sendLog   String // JSON-encoded number[] of send timestamps (last hour) for rate limiting
+
+  @@map("otp_codes")
+}

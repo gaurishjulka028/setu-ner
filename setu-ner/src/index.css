@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import 'leaflet/dist/leaflet.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #0B6E4F;
+  --primary-dark: #095A40;
+  --primary-light: #E3F2EC;
+  --secondary: #1B4965;
+  --secondary-light: #E4ECF3;
+  --accent: #E08E29;
+  --accent-light: #FBEFE1;
+  --success: #2E9E5B;
+  --success-light: #E2F1E8;
+  --hazard: #D64545;
+  --hazard-light: #F9E5E5;
+  --caution: #E0A929;
+  --caution-light: #FBF3E1;
+  --canvas: #F8FAFC;
+  --card: #FFFFFF;
+  --text: #172033;
+  --text-muted: #64748B;
+  --border: #E2E8F0;
+}
+
+html, body, #root { height: 100%; }
+html, body { overflow-x: hidden; }
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tighter tracking + heavier weight on headings by default gives the type
+   scale more character than the Tailwind-default look, without needing a
+   second display typeface. */
+h1, h2, h3 { letter-spacing: -0.01em; }
+
+button, input, select, textarea { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { min-height: 2.5rem; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(11, 110, 79, 0.32);
+  outline-offset: 2px;
+}
+
+/* ── Signature texture & elevation utilities ──────────────────────────────
+   A single map-inspired motif (contour lines) reused sparingly across the
+   hero, header, and dark panels — the platform's one recognisable visual
+   "accessory" rather than decoration repeated everywhere. */
+/* Applied to a `relative overflow-hidden` container; the texture lives on a
+   ::before layer (not the element's own background) so its opacity never
+   affects the readability of real content sitting on top of it. */
+.contour-field { position: relative; }
+.contour-field::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1'%3E%3Cpath d='M-10 40 Q 55 10 110 40 T 230 40'/%3E%3Cpath d='M-10 80 Q 55 50 110 80 T 230 80'/%3E%3Cpath d='M-10 120 Q 55 90 110 120 T 230 120'/%3E%3Cpath d='M-10 160 Q 55 130 110 160 T 230 160'/%3E%3Cpath d='M-10 200 Q 55 170 110 200 T 230 200'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  opacity: 0.14;
+}
+.contour-field > * { position: relative; z-index: 1; }
+
+.contour-field-light { position: relative; }
+.contour-field-light::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%230B6E4F' stroke-width='1'%3E%3Cpath d='M-10 40 Q 55 10 110 40 T 230 40'/%3E%3Cpath d='M-10 80 Q 55 50 110 80 T 230 80'/%3E%3Cpath d='M-10 120 Q 55 90 110 120 T 230 120'/%3E%3Cpath d='M-10 160 Q 55 130 110 160 T 230 160'/%3E%3Cpath d='M-10 200 Q 55 170 110 200 T 230 200'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  opacity: 0.06;
+}
+.contour-field-light > * { position: relative; z-index: 1; }
+
+/* A short amber "route-line" rule — the accent used as a structural signature
+   (section headers, active states) rather than an afterthought colour. */
+.route-rule {
+  position: relative;
+}
+.route-rule::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--caution));
+  margin-right: 8px;
+  vertical-align: middle;
+  transform: translateY(-1px);
+}
+
+input, select, textarea {
+  border-color: var(--border);
+  color: var(--text);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(11, 110, 79, 0.14);
+  outline: none;
+}
+
+.page-transition { animation: pageIn .28s ease-out both; }
+@keyframes pageIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* High-contrast mode (accessibility toggle) */
+.hc body, body.hc {
+  background: #ffffff;
+}
+.hc .hc-card { border: 2px solid #000 !important; }
+.hc .hc-text { color: #000 !important; }
+.hc button, .hc a { text-decoration: underline; }
+
+/* Leaflet fixes */
+.leaflet-container { font-family: inherit; background: #e8eef2; }
+.leaflet-bar a { color: var(--secondary); }
+.leaflet-bar a, .leaflet-bar a:hover { border-radius: 0; }
+.leaflet-bar { border-radius: 10px !important; overflow: hidden; box-shadow: 0 6px 18px rgba(9,26,35,0.16) !important; }
+.leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 16px 40px -8px rgba(9,26,35,0.28); }
+.leaflet-popup-content { margin: 10px 14px; font-size: 13px; }
+.leaflet-popup-tip { box-shadow: none; }
+
+/* map marker labels */
+.marker-pin {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+}
+.marker-pin > svg { transform: rotate(45deg); width: 14px; height: 14px; color: #fff; }
+
+.pulse-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 0 rgba(214,69,69,.6);
+  animation: pulse 1.8s infinite;
+}
+.pulse-dot--high { animation-name: pulse; }
+.pulse-dot--medium { animation-name: pulseAmber; }
+.pulse-dot--low { animation-name: pulseBlue; }
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(214,69,69,.55); }
+  70% { box-shadow: 0 0 0 12px rgba(214,69,69,0); }
+  100% { box-shadow: 0 0 0 0 rgba(214,69,69,0); }
+}
+@keyframes pulseAmber {
+  0% { box-shadow: 0 0 0 0 rgba(224,142,41,.55); }
+  70% { box-shadow: 0 0 0 12px rgba(224,142,41,0); }
+  100% { box-shadow: 0 0 0 0 rgba(224,142,41,0); }
+}
+@keyframes pulseBlue {
+  0% { box-shadow: 0 0 0 0 rgba(27,73,101,.55); }
+  70% { box-shadow: 0 0 0 12px rgba(27,73,101,0); }
+  100% { box-shadow: 0 0 0 0 rgba(27,73,101,0); }
+}
+
+.slide-in { animation: slideIn .25s ease-out; }
+@keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.fade-up { animation: fadeUp .35s ease-out both; }
+@keyframes fadeUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* Marquee ticker (HazardStrip). Duration is set per-instance via the
+   --ticker-duration custom property (computed in Shell.tsx from the
+   rendered content width, so short and long alert lists scroll at a
+   consistent px/second speed instead of a fixed 30s regardless of length).
+   The fade mask lives on the inner .ticker-viewport (the clipped scroll
+   region only) so it fades the text at its own edges without also fading
+   the fixed CloudRain icon / offline badge that sit outside it. Hovering or
+   focusing anywhere on the outer .ticker-strip pauses the scroll so an
+   alert can be read in full before it moves on. */
+.ticker-viewport {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
+}
+.ticker { animation: ticker var(--ticker-duration, 30s) linear infinite; }
+.ticker-strip:hover .ticker,
+.ticker-strip:focus-within .ticker { animation-play-state: paused; }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* thin scrollbars for panels */
+.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.thin-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

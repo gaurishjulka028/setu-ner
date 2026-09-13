@@ -1,0 +1,12 @@
+{
+  "name": "SETU-NER — Smart Logistics & Accessibility Platform",
+  "short_name": "SETU-NER",
+  "description": "AI-based smart logistics and accessibility intelligence for India's North Eastern Region (MDoNER, SIH26002)",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F6F8",
+  "theme_color": "#0B6E4F",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

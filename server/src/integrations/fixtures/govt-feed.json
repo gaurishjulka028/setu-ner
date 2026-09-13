@@ -1,0 +1,11 @@
+{
+  "_comment": "MOCK fixture — stands in for a real state PWD / NIC data-portal feed. See ../govtFeed.ts. Segment ids match server/src/data/ner.ts; districtId matches DISTRICTS.",
+  "roadClosures": [
+    { "segmentId": "E7", "source": "Meghalaya PWD (mock)", "reason": "Landslide clearance in progress", "reportedAt": "2026-09-10T04:30:00+05:30", "expectedReopen": "2026-09-12T18:00:00+05:30" },
+    { "segmentId": "E15", "source": "Dima Hasao District Admin (mock)", "reason": "Bridge load-testing after monsoon damage", "reportedAt": "2026-09-09T11:00:00+05:30", "expectedReopen": null }
+  ],
+  "districtStock": [
+    { "districtId": "HFL", "source": "NE Council supply cell (mock)", "asOf": "2026-09-11T06:00:00+05:30", "medicine": 2.1, "food": 2.8, "fuel": 5.5, "construction": 0.8 },
+    { "districtId": "JWI", "source": "Meghalaya SDMA (mock)", "asOf": "2026-09-11T06:00:00+05:30", "medicine": 5.6, "food": 6.4, "fuel": 8.2, "construction": 1.9 }
+  ]
+}
