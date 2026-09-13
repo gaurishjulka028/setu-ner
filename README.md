@@ -3,7 +3,7 @@
 
 A full-stack, role-based platform that tracks road/bridge accessibility, shipments, and disruptions across the North Eastern Region in real time — a live map, a risk-scored routing engine, field incident reporting with AI photo triage, and district-level dashboards, all synced live across every connected user.
 
-🔗 **Live demo:** _add your Vercel URL here_
+🔗 **Live demo:** _https://setu-ner-mu.vercel.app/_
 📽️ **Demo video:** _add your video link here_
 
 ---
