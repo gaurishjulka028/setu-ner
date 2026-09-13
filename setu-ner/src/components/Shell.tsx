@@ -62,9 +62,9 @@ function TopBar() {
   const langs = [
     { code: 'en', label: 'English' },
     { code: 'as', label: 'অসমীয়া' },
-    { code: 'mani', label: 'ꯃꯩꯇꯩꯂꯣꯟ' },
-    { code: 'kha', label: 'Khasi' },
-    { code: 'lus', label: 'Mizo ṭawng' },
+    { code: 'mani', label: 'Meiteilon (Manipuri)' },
+    { code: 'kha', label: 'Khasi', comingSoon: true },
+    { code: 'lus', label: 'Mizo ṭawng', comingSoon: true },
   ]
 
   return (
@@ -121,9 +121,11 @@ function TopBar() {
         {langOpen && (
           <div className="absolute right-0 top-12 z-[1200] w-40 rounded-xl border border-slate-200 bg-white py-1 text-slate-700 shadow-panel">
             {langs.map(l => (
-              <button key={l.code} onClick={() => { i18n.changeLanguage(l.code); setLangOpen(false) }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${i18n.language === l.code ? 'font-bold text-primary' : ''}`}>
-                {l.label}
+              <button key={l.code} disabled={l.comingSoon}
+                onClick={() => { if (l.comingSoon) return; i18n.changeLanguage(l.code); setLangOpen(false) }}
+                className={`flex w-full items-center justify-between text-left px-4 py-2 text-sm ${l.comingSoon ? 'cursor-not-allowed text-slate-300' : 'hover:bg-slate-50'} ${i18n.language === l.code ? 'font-bold text-primary' : ''}`}>
+                <span>{l.label}</span>
+                {l.comingSoon && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-400">Soon</span>}
               </button>
             ))}
           </div>

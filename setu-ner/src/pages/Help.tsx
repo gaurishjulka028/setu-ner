@@ -14,7 +14,7 @@ export default function Help() {
   const { t } = useTranslation()
   const [input, setInput] = useState('')
   const [chat, setChat] = useState<{ who: 'bot' | 'user'; text: string }[]>([
-    { who: 'bot', text: '👋 Ask me about route safety, alerts, or offline reporting. Use the language switcher in the top bar for অসমীয়া / ꯃꯩꯇꯩꯂꯣꯟ.' },
+    { who: 'bot', text: '👋 Ask me about route safety, alerts, or offline reporting. Use the language switcher in the top bar for অসমীয়া / Meiteilon.' },
   ])
 
   const send = (qRaw?: string) => {
