@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Shell from './components/Shell'
 import Chatbot from './components/Chatbot'
+import LanguageTextOverlay from './components/LanguageTextOverlay'
 import { useStore } from './store/useStore'
 import { canAccess } from './lib/rbac'
 
@@ -58,6 +59,7 @@ export default function App() {
 
   return (
     <Shell>
+      <LanguageTextOverlay />
       <Routes>
         {/* public */}
         <Route path="/" element={<Home />} />
