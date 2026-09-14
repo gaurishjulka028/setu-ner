@@ -82,7 +82,7 @@ export default function WhatsAppPanel() {
       {!live && (
         <p className="mt-1 text-[11px] text-slate-500">
           {transport === 'simulated'
-            ? 'No WhatsApp provider configured — messages are logged to the server outbox (not delivered to a phone). Set Twilio/Meta keys in server/.env.'
+            ? 'Simulation mode active — WhatsApp messages are recorded as successful in the demo outbox and are not sent to a real phone.'
             : `Transport "${transport}" is configured but not marked live yet.`}
           {status?.statusCallback
             ? ` Delivery receipts → ${status.statusCallback}`
