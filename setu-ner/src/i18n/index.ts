@@ -6,10 +6,9 @@ import mani from './mani'
 import kha from './kha'
 import lus from './lus'
 
-// Language resources. English and Assamese are complete sample translations;
-// Manipuri (Meiteilon), Khasi, and Mizo ship key phrases — the architecture
-// is designed for a Bhashini (govt multilingual AI) translation plug-in in
-// production for full coverage of all five.
+// English, Assamese, and the supported Meiteilon (Manipuri) authentication
+// flow have local strings so the login/registration journey does not fall back
+// to English. Other regional languages retain their existing rollout status.
 void i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
