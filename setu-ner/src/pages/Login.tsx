@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import i18n from '../i18n'
 import {
   Users, Truck, Building2, ShieldCheck, ArrowRight, Loader2, Phone, KeyRound,
   CheckCircle2, Mail, Lock, User as UserIcon, Info, Eye, EyeOff, IdCard,
@@ -10,7 +11,7 @@ import { Card, Button } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { api, ApiError } from '../lib/api'
 import { googleAuthEnabled, signInWithGoogle, resumeRedirectSignIn } from '../lib/firebase'
-import { PASSWORD_RULE, passwordProblem, isFreeMail, isGovEmail } from '../lib/rbac'
+import { passwordProblem, isFreeMail, isGovEmail } from '../lib/rbac'
 import type { Role } from '../types'
 
 // ── Sign-in & registration ────────────────────────────────────────────────
@@ -51,14 +52,14 @@ type OtpStatus = { channel: 'sms' | 'whatsapp' | 'simulated'; devEcho: boolean; 
 function errMessage(e: unknown): string {
   if (e instanceof ApiError) return e.message
   const code = (e as { code?: string })?.code
-  if (code === 'auth/popup-blocked') return 'Your browser blocked the Google popup — allow popups for this site and try again.'
+  if (code === 'auth/popup-blocked') return i18n.t('auth.googlePopupBlocked')
   if (code === 'auth/unauthorized-domain') {
     let host = 'this preview domain'
     try { host = window.location.host } catch { /* non-browser */ }
-    return `Google sign-in is blocked here: "${host}" is not in your Firebase project's authorised domains. Fix: Firebase Console → Authentication → Settings → Authorized domains → add "${host}" (it works on localhost right away).`
+    return i18n.t('auth.googleUnauthorizedDomain', { host })
   }
-  if (code === 'auth/network-request-failed') return 'Network error talking to Google — check your connection.'
-  if (code === 'auth/configuration-not-found' || code === 'auth/invalid-api-key') return 'Firebase Google sign-in is not configured correctly — check VITE_FIREBASE_* in setu-ner/.env.'
+  if (code === 'auth/network-request-failed') return i18n.t('auth.googleNetworkError')
+  if (code === 'auth/configuration-not-found' || code === 'auth/invalid-api-key') return i18n.t('auth.googleConfigError')
   // auth/embedded-frame, auth/popup-stuck, and the redirect-round-trip
   // failure thrown by resumeRedirectSignIn() all carry their own actionable
   // message — use it instead of guessing. This also covers any other
@@ -67,7 +68,7 @@ function errMessage(e: unknown): string {
   // right for an actual fetch failure, i.e. api.ts's own ApiError, already
   // handled above).
   if (e instanceof Error && e.message) return e.message
-  return 'Could not reach the API server. Start it with `npm run dev` in the server folder, then try again.'
+  return i18n.t('auth.apiUnavailable')
 }
 
 function GoogleErrorBanner({ error }: { error: string }) {
@@ -80,7 +81,7 @@ function GoogleErrorBanner({ error }: { error: string }) {
       {isFrameIssue && (
         <a href={href} target="_blank" rel="noopener noreferrer"
           className="mt-2 inline-flex w-fit items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-[11px] font-bold text-hazard underline decoration-2 underline-offset-2 hover:no-underline">
-          Open this page in a new tab →
+          {i18n.t('auth.openNewTab')} →
         </a>
       )}
     </div>
@@ -219,6 +220,25 @@ function Divider({ label }: { label: string }) {
 
 // ── Page ────────────────────────────────────────────────────────────────────
 
+const GOOGLE_FLOW_KEY = 'setu-google-flow'
+type GoogleFlowState = { tab: 'signin' | 'register'; role?: RegisterRole; next: string; phoneToken?: string; phone?: string }
+
+function saveGoogleFlow(state: GoogleFlowState) {
+  try { sessionStorage.setItem(GOOGLE_FLOW_KEY, JSON.stringify(state)) } catch { /* noop */ }
+}
+function loadGoogleFlow(): GoogleFlowState | null {
+  try {
+    const raw = sessionStorage.getItem(GOOGLE_FLOW_KEY)
+    if (!raw) return null
+    const value = JSON.parse(raw) as Partial<GoogleFlowState>
+    if (value.tab !== 'signin' && value.tab !== 'register') return null
+    return { tab: value.tab, role: value.role, next: typeof value.next === 'string' ? value.next : '/', phoneToken: typeof value.phoneToken === 'string' ? value.phoneToken : undefined, phone: typeof value.phone === 'string' ? value.phone : undefined }
+  } catch { return null }
+}
+function clearGoogleFlow() {
+  try { sessionStorage.removeItem(GOOGLE_FLOW_KEY) } catch { /* noop */ }
+}
+
 export default function Login() {
   const { t } = useTranslation()
   const nav = useNavigate()
@@ -268,16 +288,36 @@ export default function Login() {
       const n = sessionStorage.getItem('setu-auth-notice')
       if (n) { setNotice(n); sessionStorage.removeItem('setu-auth-notice') }
     } catch { /* noop */ }
+
+    // A Google redirect reloads the SPA. Restore the exact tab/role that
+    // started the flow so hosted sign-up does not jump back to the wrong
+    // screen after Google returns.
+    const flow = loadGoogleFlow()
+    if (flow) {
+      setTab(flow.tab)
+      if (flow.role) setRegisterRole(flow.role)
+    }
+
     resumeRedirectSignIn()
       .then(async idToken => {
-        if (!idToken) return
-        try { await googleSignIn(idToken); nav(next, { replace: true }) }
+        if (!idToken) { clearGoogleFlow(); return }
+        try {
+          const flow = loadGoogleFlow()
+          await googleSignIn(idToken, flow?.phoneToken, flow?.role)
+          clearGoogleFlow()
+          nav(flow?.next || next, { replace: true })
+        }
         catch (err) {
-          if (err instanceof ApiError && err.body?.needsPhone === true) setGooglePhoneStage({ idToken })
-          else setGoogleError(errMessage(err))
+          if (err instanceof ApiError && err.body?.needsPhone === true) {
+            const currentFlow = loadGoogleFlow()
+            setTab(currentFlow?.tab ?? 'signin')
+            if (currentFlow?.role) setRegisterRole(currentFlow.role)
+            setGooglePhoneStage({ idToken, role: currentFlow?.role })
+          }
+          else { clearGoogleFlow(); setGoogleError(errMessage(err)) }
         }
       })
-      .catch(err => setGoogleError(errMessage(err)))
+      .catch(err => { clearGoogleFlow(); setGoogleError(errMessage(err)) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -310,10 +350,12 @@ export default function Login() {
     }
     setGoogleBusy(true)
     try {
+      saveGoogleFlow({ tab: opts.role ? 'register' : tab, role: opts.role, next, phoneToken: opts.retryPhoneToken ?? (opts.role ? phoneToken ?? undefined : undefined), phone: opts.role ? phone : undefined })
       const idToken = opts.retryToken ?? await signInWithGoogle()
-      if (!idToken) return
+      if (!idToken) { clearGoogleFlow(); return }
       try {
         await googleSignIn(idToken, opts.retryPhoneToken, opts.role)
+        clearGoogleFlow()
         finish()
       } catch (err) {
         if (err instanceof ApiError && err.body?.needsPhone === true) {
@@ -322,10 +364,11 @@ export default function Login() {
           const known = err.body.knownPhone
           if (typeof known === 'string' && !phone) setPhone(known.replace(/^91(\d{10})$/, '$1'))
         } else {
+          clearGoogleFlow()
           setGoogleError(errMessage(err))
         }
       }
-    } catch (err) { setGoogleError(errMessage(err)) } finally { setGoogleBusy(false) }
+    } catch (err) { clearGoogleFlow(); setGoogleError(errMessage(err)) } finally { setGoogleBusy(false) }
   }
   const googleSignInFlow = () => runGoogle({})
   const googleRegisterFlow = () => runGoogle({ role: registerRole, retryPhoneToken: phoneToken ?? undefined })
@@ -377,12 +420,12 @@ export default function Login() {
         <div className="text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-dark text-lg font-black text-white shadow-brand">SN</div>
           <h1 className="text-2xl font-extrabold tracking-tight text-primary">SETU-NER</h1>
-          <p className="mt-1 text-xs text-slate-500">{t('tagline')} · MDoNER, Government of India</p>
+          <p className="mt-1 text-xs text-slate-500">{t('tagline')} · {t('auth.govBrand')}</p>
         </div>
 
         {notice && (
           <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-            <span className="font-bold">Signed out:</span> {notice}
+            <span className="font-bold">{t('auth.signedOut')}:</span> {notice}
           </div>
         )}
 
@@ -427,7 +470,7 @@ export default function Login() {
                   <div className="relative">
                     <input id="si-password" className={`${inputCls} pr-10`} type={showPw ? 'text' : 'password'} autoComplete="current-password"
                       value={siPassword} onChange={e => setSiPassword(e.target.value)} placeholder="••••••••" required />
-                    <button type="button" onClick={() => setShowPw(s => !s)} aria-label={showPw ? 'Hide password' : 'Show password'}
+                    <button type="button" onClick={() => setShowPw(s => !s)} aria-label={showPw ? t('auth.hidePassword') : t('auth.showPassword')}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                       {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
@@ -450,8 +493,8 @@ export default function Login() {
               {registerStep === 'phone' ? (
                 <>
                   <div>
-                    <h2 className="text-base font-extrabold text-slate-800">Verify your mobile number</h2>
-                    <p className="mt-0.5 text-xs leading-relaxed text-slate-500">Verify your phone with OTP first. After verification, the account details page will open.</p>
+                    <h2 className="text-base font-extrabold text-slate-800">{t('auth.verifyMobileTitle')}</h2>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{t('auth.verifyMobileBody')}</p>
                   </div>
 
                   {/* Choose the account role before entering the details step. */}
@@ -487,18 +530,18 @@ export default function Login() {
                 <>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h2 className="text-base font-extrabold text-slate-800">Create your account</h2>
-                      <p className="mt-0.5 text-xs leading-relaxed text-slate-500">Phone verified. Enter your account details or continue with Google.</p>
+                      <h2 className="text-base font-extrabold text-slate-800">{t('auth.createAccount')}</h2>
+                      <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{t('auth.detailsBody')}</p>
                     </div>
                     <button type="button" onClick={() => { setRegisterStep('phone'); setRegError(null); setGoogleError(null) }}
-                      className="shrink-0 text-[11px] font-bold text-primary hover:underline">Change phone</button>
+                      className="shrink-0 text-[11px] font-bold text-primary hover:underline">{t('auth.changePhone')}</button>
                   </div>
 
                   {isOfficial ? (
                     <div className="space-y-3.5">
                       {googleError && <GoogleErrorBanner error={googleError} />}
                       <GoogleButton label={t('auth.continueGoogleGov')} onClick={googleRegisterFlow} busy={googleBusy} />
-                      <p className="text-center text-[10.5px] leading-relaxed text-slate-400">Use your verified government Google account. The selected role and domain rules are applied automatically.</p>
+                      <p className="text-center text-[10.5px] leading-relaxed text-slate-400">{t('auth.govGoogleBody')}</p>
                     </div>
                   ) : (
                     <>
@@ -516,19 +559,19 @@ export default function Login() {
                         <div>
                           <label className={labelCls}><Mail size={13} /> {registerRole === 'logistics' ? t('auth.companyEmailLabel') : t('auth.emailLabel')}</label>
                           <input className={inputCls} type="email" autoComplete="email" value={rEmail} onChange={e => setREmail(e.target.value)}
-                            placeholder={registerRole === 'logistics' ? 'ops@yourcompany.in' : 'you@example.com'} required />
+                            placeholder={registerRole === 'logistics' ? t('auth.companyEmailPh') : t('auth.emailPh')} required />
                         </div>
                         <div>
                           <label className={labelCls}><Lock size={13} /> {t('auth.passwordLabel')}</label>
                           <div className="relative">
                             <input className={`${inputCls} pr-10`} type={showRegPw ? 'text' : 'password'} autoComplete="new-password"
                               value={rPassword} onChange={e => setRPassword(e.target.value)} placeholder="••••••••" required />
-                            <button type="button" onClick={() => setShowRegPw(s => !s)} aria-label={showRegPw ? 'Hide password' : 'Show password'}
+                            <button type="button" onClick={() => setShowRegPw(s => !s)} aria-label={showRegPw ? t('auth.hidePassword') : t('auth.showPassword')}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                               {showRegPw ? <EyeOff size={15} /> : <Eye size={15} />}
                             </button>
                           </div>
-                          <p className="mt-1 text-[10px] text-slate-400">{PASSWORD_RULE}</p>
+                          <p className="mt-1 text-[10px] text-slate-400">{t('auth.passwordRule')}</p>
                         </div>
 
                         {regError && <div className={errorCls}><AlertCircle />{regError}</div>}
@@ -540,7 +583,7 @@ export default function Login() {
                       <Divider label={t('auth.orGoogle')} />
                       {googleError && <GoogleErrorBanner error={googleError} />}
                       <GoogleButton label={t('auth.continueGoogle')} onClick={googleRegisterFlow} busy={googleBusy} />
-                      <p className="text-center text-[10.5px] leading-relaxed text-slate-400">Your phone is already verified, so Google registration can complete immediately.</p>
+                      <p className="text-center text-[10.5px] leading-relaxed text-slate-400">{t('auth.googlePhoneReady')}</p>
                     </>
                   )}
                 </>
@@ -556,7 +599,7 @@ export default function Login() {
 
         {/* demo accounts */}
         <details className="rounded-2xl border border-slate-200/80 bg-white/70 p-4 shadow-card">
-          <summary className="cursor-pointer text-xs font-bold text-slate-500">{t('auth.demo')} <span className="text-slate-400 font-normal">· JWT-secured API</span></summary>
+          <summary className="cursor-pointer text-xs font-bold text-slate-500">{t('auth.demo')} <span className="text-slate-400 font-normal">· {t('auth.apiSecured')}</span></summary>
           <div className="mt-3 grid grid-cols-2 gap-2.5">
             {(['citizen', 'operator', 'logistics', 'official'] as Role[]).map(r => (
               <button key={r} onClick={() => enter(r)} disabled={!!pendingRole}
@@ -574,7 +617,7 @@ export default function Login() {
             <button onClick={() => enter('admin')} disabled={!!pendingRole}
               className="col-span-2 text-left border-2 border-dashed border-slate-200 hover:border-primary rounded-xl p-2.5 transition flex items-center gap-2 hover:bg-primary-light/40 disabled:opacity-50">
               <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center"><ShieldCheck size={15} /></div>
-              <div className="text-[12px] font-bold text-slate-700">{pendingRole === 'admin' ? 'Signing in…' : t('auth.admin') + ' demo'}</div>
+              <div className="text-[12px] font-bold text-slate-700">{pendingRole === 'admin' ? t('auth.signingIn') : t('auth.admin') + ' demo'}</div>
             </button>
           </div>
         </details>
