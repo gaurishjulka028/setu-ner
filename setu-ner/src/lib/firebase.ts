@@ -20,7 +20,7 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app'
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
-  getRedirectResult, type Auth,
+  getRedirectResult, setPersistence, browserLocalPersistence, type Auth,
 } from 'firebase/auth'
 
 // Public Firebase web config for this project. These values identify the
@@ -107,6 +107,9 @@ const REDIRECT_MARKER_KEY = 'setu-google-redirect-inflight'
 export async function resumeRedirectSignIn(): Promise<string | null> {
   const a = ensureInit()
   if (!a) return null
+  // Keep the Firebase auth session in first-party browser storage so a hosted
+  // Google redirect can reliably return to the same account/session.
+  await setPersistence(a, browserLocalPersistence)
   const wasInFlight = (() => { try { return sessionStorage.getItem(REDIRECT_MARKER_KEY) === '1' } catch { return false } })()
   try {
     const result = await getRedirectResult(a)
@@ -147,6 +150,9 @@ function raceWithTimeout<T>(p: Promise<T>, ms: number, onTimeoutMessage: string)
 export async function signInWithGoogle(): Promise<string | null> {
   const a = ensureInit()
   if (!a) return null
+
+  // Explicitly use durable first-party persistence before opening Google.
+  await setPersistence(a, browserLocalPersistence)
 
   // Inside an iframe, don't even attempt a popup or redirect — both are
   // routinely broken by the parent frame's own sandbox restrictions, and
