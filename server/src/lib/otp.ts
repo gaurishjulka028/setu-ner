@@ -55,7 +55,6 @@ const SECRET = () => {
   return process.env.JWT_SECRET || 'dev-only-insecure-otp-secret'
 }
 const env = (k: string) => (process.env[k] ?? '').trim() || undefined
-const isProd = () => process.env.NODE_ENV === 'production'
 
 const hashCode = (phone: string, code: string) =>
   crypto.createHmac('sha256', SECRET()).update(`${phone}:${code}`).digest('hex')
@@ -63,7 +62,7 @@ const hashCode = (phone: string, code: string) =>
 const genCode = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, '0')
 
 export function otpChannel(): OtpChannel {
-  const want = (env('OTP_CHANNEL') ?? 'auto').toLowerCase()
+  const want = (env('OTP_CHANNEL') ?? 'simulated').toLowerCase()
   const smsReady = Boolean(env('TWILIO_ACCOUNT_SID') && env('TWILIO_AUTH_TOKEN') && (env('TWILIO_SMS_FROM') || env('TWILIO_MESSAGING_SERVICE_SID')))
   const waReady = waTransport() !== 'simulated'
   if (want === 'sms') return smsReady ? 'sms' : 'simulated'
@@ -79,7 +78,9 @@ export const otpStatus = () => ({
   cooldownSec: RESEND_COOLDOWN_MS / 1000,
 })
 
-const devEchoEnabled = () => !isProd() && (env('OTP_DEV_ECHO') ?? 'true') !== 'false'
+// Demo-friendly by default: simulated OTPs are shown on the page even when the
+// API is hosted with NODE_ENV=production. Set OTP_DEV_ECHO=false to hide them.
+const devEchoEnabled = () => (env('OTP_DEV_ECHO') ?? 'true') !== 'false'
 
 async function sendSms(to: string, body: string): Promise<void> {
   const sid = env('TWILIO_ACCOUNT_SID')!, token = env('TWILIO_AUTH_TOKEN')!
